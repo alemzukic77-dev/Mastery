@@ -19,8 +19,10 @@ export function getExtractionModel(): GenerativeModel {
     model: "gemini-2.5-flash",
     systemInstruction: EXTRACTION_SYSTEM_PROMPT,
     generationConfig: {
-      temperature: 0.1,
+      temperature: 0.15,
       responseMimeType: "application/json",
+      // Bump to maximum to avoid truncation on multi-doc inputs with many line items
+      maxOutputTokens: 8192,
     },
   });
 }
