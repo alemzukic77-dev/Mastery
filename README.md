@@ -105,7 +105,7 @@ Validation logic, business rules, security rules, i UI/UX decisions su pisane sv
 
 ## Deployed App
 
-🌐 **Live URL**: _(biće dodano nakon Firebase App Hosting deploy-a)_
+🌐 **Live URL**: [https://mastery--mastery-3afd9.us-east4.hosted.app](https://mastery--mastery-3afd9.us-east4.hosted.app)
 
 Repo: [github.com/alemzukic77-dev/Mastery](https://github.com/alemzukic77-dev/Mastery)
 

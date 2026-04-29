@@ -11,7 +11,7 @@ Take-home za **Mastery.ba** — full-stack web aplikacija za extraction, validat
 | Zahtjev | Gdje |
 |---|---|
 | **GitHub repository** | https://github.com/alemzukic77-dev/Mastery |
-| **Live deployed application** | _(URL će biti dodan u [README.md](README.md) nakon Firebase App Hosting deploy-a)_ |
+| **Live deployed application** | [https://mastery--mastery-3afd9.us-east4.hosted.app](https://mastery--mastery-3afd9.us-east4.hosted.app) |
 | **README sa setup instrukcijama** | [README.md](README.md) — Tech Stack, Setup (env, install, run), Scripts |
 | **Explanation of approach** | [docs/APPROACH.md](docs/APPROACH.md) — arhitekturne odluke + zašto + trade-offs |
 | **AI tools used** | [README.md § AI Tools Used](README.md#ai-tools-used) + [docs/APPROACH.md § AI tools koje sam koristio](docs/APPROACH.md#ai-tools-koje-sam-koristio) |
