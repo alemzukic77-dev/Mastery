@@ -1,9 +1,6 @@
 import "server-only";
 import { getExtractionModel } from "@/lib/llm/gemini";
-import {
-  EXTRACTION_SYSTEM_PROMPT,
-  FILE_EXTRACTION_USER_PROMPT,
-} from "@/lib/llm/prompts";
+import { FILE_EXTRACTION_USER_PROMPT } from "@/lib/llm/prompts";
 import { safeParseExtraction } from "@/lib/validation/schemas";
 import type { ExtractorInput, ExtractorResult } from "./index";
 
@@ -14,7 +11,7 @@ export async function extractFromImage(
   const mimeType = input.mimeType || "image/png";
 
   const result = await model.generateContent([
-    { text: `${EXTRACTION_SYSTEM_PROMPT}\n\n${FILE_EXTRACTION_USER_PROMPT}` },
+    { text: FILE_EXTRACTION_USER_PROMPT },
     {
       inlineData: {
         mimeType,

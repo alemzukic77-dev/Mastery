@@ -1,7 +1,6 @@
 import "server-only";
 import { getExtractionModel } from "@/lib/llm/gemini";
 import {
-  EXTRACTION_SYSTEM_PROMPT,
   FILE_EXTRACTION_USER_PROMPT,
   TEXT_EXTRACTION_USER_PROMPT,
 } from "@/lib/llm/prompts";
@@ -16,7 +15,7 @@ export async function extractFromPdf(
   // Primary path: send PDF directly to Gemini multimodal
   try {
     const result = await model.generateContent([
-      { text: `${EXTRACTION_SYSTEM_PROMPT}\n\n${FILE_EXTRACTION_USER_PROMPT}` },
+      { text: FILE_EXTRACTION_USER_PROMPT },
       {
         inlineData: {
           mimeType: "application/pdf",
@@ -40,9 +39,7 @@ export async function extractFromPdf(
     throw new Error("PDF contains no extractable text");
   }
 
-  const result = await model.generateContent(
-    `${EXTRACTION_SYSTEM_PROMPT}\n\n${TEXT_EXTRACTION_USER_PROMPT(rawText)}`,
-  );
+  const result = await model.generateContent(TEXT_EXTRACTION_USER_PROMPT(rawText));
   const text = result.response.text();
   const json = JSON.parse(text);
   const data = safeParseExtraction(json);

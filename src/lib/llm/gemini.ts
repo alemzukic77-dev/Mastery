@@ -1,5 +1,6 @@
 import "server-only";
 import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
+import { EXTRACTION_SYSTEM_PROMPT } from "./prompts";
 
 let cachedClient: GoogleGenerativeAI | null = null;
 
@@ -16,6 +17,7 @@ export function getGeminiClient(): GoogleGenerativeAI {
 export function getExtractionModel(): GenerativeModel {
   return getGeminiClient().getGenerativeModel({
     model: "gemini-2.5-flash",
+    systemInstruction: EXTRACTION_SYSTEM_PROMPT,
     generationConfig: {
       temperature: 0.1,
       responseMimeType: "application/json",
