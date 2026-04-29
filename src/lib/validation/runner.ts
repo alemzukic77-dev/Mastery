@@ -6,6 +6,7 @@ import type {
   ValidationIssue,
 } from "@/lib/types";
 import {
+  autoComputeTotal,
   buildDuplicateIssue,
   checkDates,
   checkLineItems,
@@ -21,6 +22,7 @@ interface RunValidationOptions {
 }
 
 export interface ValidationResult {
+  data: ExtractedData;
   issues: ValidationIssue[];
   status: DocumentStatus;
 }
@@ -30,31 +32,36 @@ export async function runValidation(
 ): Promise<ValidationResult> {
   const { data, userId, documentId, db } = opts;
 
+  const { data: enrichedData, issues: enrichmentIssues } = autoComputeTotal(data);
+
   const issues: ValidationIssue[] = [
-    ...checkRequiredFields(data),
-    ...checkTotal(data),
-    ...checkDates(data),
-    ...checkLineItems(data),
+    ...enrichmentIssues,
+    ...checkRequiredFields(enrichedData),
+    ...checkTotal(enrichedData),
+    ...checkDates(enrichedData),
+    ...checkLineItems(enrichedData),
   ];
 
-  if (data.documentNumber) {
+  if (enrichedData.documentNumber) {
     const dupSnap = await db
       .collection("users")
       .doc(userId)
       .collection("documents")
-      .where("documentNumber", "==", data.documentNumber)
+      .where("documentNumber", "==", enrichedData.documentNumber)
       .limit(2)
       .get();
 
     const otherDup = dupSnap.docs.find((d) => d.id !== documentId);
     if (otherDup) {
-      issues.push(buildDuplicateIssue(data.documentNumber));
+      issues.push(buildDuplicateIssue(enrichedData.documentNumber));
     }
   }
 
-  return { issues, status: deriveStatus(issues) };
+  return { data: enrichedData, issues, status: deriveStatus(issues) };
 }
 
 export function deriveStatus(issues: ValidationIssue[]): DocumentStatus {
-  return issues.length === 0 ? "validated" : "needs_review";
+  if (issues.some((i) => i.severity === "error")) return "needs_review";
+  if (issues.length === 0) return "validated";
+  return "needs_review";
 }

@@ -78,7 +78,7 @@ export async function PATCH(
       });
 
       await docRef.update({
-        ...parsed.data,
+        ...validation.data,
         validationIssues: validation.issues,
         status: validation.status,
         updatedAt: FieldValue.serverTimestamp(),

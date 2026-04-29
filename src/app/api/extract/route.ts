@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     });
 
     await docRef.update({
-      ...extracted.data,
+      ...validation.data,
       rawExtraction: extracted.raw,
       validationIssues: validation.issues,
       status: validation.status,

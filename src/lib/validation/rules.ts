@@ -117,6 +117,33 @@ export function checkLineItems(doc: ExtractedData): ValidationIssue[] {
   return issues;
 }
 
+export function autoComputeTotal(data: ExtractedData): {
+  data: ExtractedData;
+  issues: ValidationIssue[];
+} {
+  if (
+    data.total === null &&
+    data.subtotal !== null &&
+    data.tax !== null &&
+    Number.isFinite(data.subtotal) &&
+    Number.isFinite(data.tax)
+  ) {
+    const computed = round2(data.subtotal + data.tax);
+    return {
+      data: { ...data, total: computed },
+      issues: [
+        {
+          field: "total",
+          severity: "warning",
+          message: `Total (${computed.toFixed(2)}) computed from subtotal + tax — no explicit total line in document.`,
+          code: "COMPUTED_TOTAL",
+        },
+      ],
+    };
+  }
+  return { data, issues: [] };
+}
+
 export function buildDuplicateIssue(
   documentNumber: string,
 ): ValidationIssue {

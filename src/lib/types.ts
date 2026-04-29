@@ -15,7 +15,8 @@ export type ValidationCode =
   | "DATE_ORDER"
   | "LINE_ITEM_MISMATCH"
   | "DUPLICATE_DOC_NUMBER"
-  | "EXTRACTION_FAILED";
+  | "EXTRACTION_FAILED"
+  | "COMPUTED_TOTAL";
 
 export interface ValidationIssue {
   field: string;

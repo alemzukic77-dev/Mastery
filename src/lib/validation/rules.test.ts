@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  autoComputeTotal,
   checkDates,
   checkLineItems,
   checkRequiredFields,
@@ -137,5 +138,53 @@ describe("checkLineItems", () => {
       ],
     };
     expect(checkLineItems(doc)).toEqual([]);
+  });
+});
+
+describe("autoComputeTotal", () => {
+  it("computes total from subtotal + tax when total is null", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      total: null,
+      subtotal: 2390,
+      tax: 478,
+    };
+    const { data, issues } = autoComputeTotal(doc);
+    expect(data.total).toBe(2868);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].code).toBe("COMPUTED_TOTAL");
+    expect(issues[0].severity).toBe("warning");
+  });
+
+  it("does not modify total when it's already present", () => {
+    const doc: ExtractedData = { ...baseDoc, total: 100 };
+    const { data, issues } = autoComputeTotal(doc);
+    expect(data.total).toBe(100);
+    expect(issues).toEqual([]);
+  });
+
+  it("does not compute when subtotal is missing", () => {
+    const doc: ExtractedData = { ...baseDoc, total: null, subtotal: null };
+    const { data, issues } = autoComputeTotal(doc);
+    expect(data.total).toBeNull();
+    expect(issues).toEqual([]);
+  });
+
+  it("does not compute when tax is missing", () => {
+    const doc: ExtractedData = { ...baseDoc, total: null, tax: null };
+    const { data, issues } = autoComputeTotal(doc);
+    expect(data.total).toBeNull();
+    expect(issues).toEqual([]);
+  });
+
+  it("rounds computed total to 2 decimals", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      total: null,
+      subtotal: 100.111,
+      tax: 22.224,
+    };
+    const { data } = autoComputeTotal(doc);
+    expect(data.total).toBe(122.34);
   });
 });

@@ -48,4 +48,34 @@ describe("extractedDataSchema", () => {
     expect(out).not.toBeNull();
     expect(out?.type).toBe("purchase_order");
   });
+
+  it("safeParseExtraction picks first element when LLM returns array", () => {
+    const out = safeParseExtraction([
+      { type: "invoice", supplier: "First", documentNumber: "1", total: 100 },
+      { type: "invoice", supplier: "Second", documentNumber: "2", total: 200 },
+    ]);
+    expect(out?.supplier).toBe("First");
+    expect(out?.documentNumber).toBe("1");
+  });
+
+  it("safeParseExtraction unwraps { documents: [...] } envelope", () => {
+    const out = safeParseExtraction({
+      documents: [
+        { type: "invoice", supplier: "Wrapped", documentNumber: "1", total: 50 },
+      ],
+    });
+    expect(out?.supplier).toBe("Wrapped");
+  });
+
+  it("safeParseExtraction unwraps { invoice: {...} } envelope", () => {
+    const out = safeParseExtraction({
+      invoice: {
+        type: "invoice",
+        supplier: "Inner",
+        documentNumber: "9",
+        total: 75,
+      },
+    });
+    expect(out?.supplier).toBe("Inner");
+  });
 });
