@@ -124,4 +124,53 @@ describe("safeParseExtractions", () => {
     expect(out).toHaveLength(2);
     expect(out.map((d) => d.supplier)).toEqual(["Valid", "Also valid"]);
   });
+
+  it("tolerates null numbers in line items by coercing to 0", () => {
+    const out = safeParseExtractions({
+      documents: [
+        {
+          type: "invoice",
+          supplier: "X",
+          documentNumber: "1",
+          lineItems: [
+            { description: "good", quantity: 2, unitPrice: 10, amount: 20 },
+            { description: "missing qty", quantity: null, unitPrice: 5, amount: 5 },
+            { description: "missing all", quantity: null, unitPrice: null, amount: null },
+          ],
+          total: 30,
+        },
+      ],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].lineItems).toHaveLength(3);
+    expect(out[0].lineItems[1]).toMatchObject({
+      description: "missing qty",
+      quantity: 0,
+      unitPrice: 5,
+      amount: 5,
+    });
+    expect(out[0].lineItems[2]).toMatchObject({
+      description: "missing all",
+      quantity: 0,
+      unitPrice: 0,
+      amount: 0,
+    });
+  });
+
+  it("tolerates null description by coercing to empty string", () => {
+    const out = safeParseExtractions({
+      documents: [
+        {
+          type: "invoice",
+          supplier: "X",
+          documentNumber: "1",
+          lineItems: [
+            { description: null, quantity: 1, unitPrice: 10, amount: 10 },
+          ],
+          total: 10,
+        },
+      ],
+    });
+    expect(out[0].lineItems[0].description).toBe("");
+  });
 });

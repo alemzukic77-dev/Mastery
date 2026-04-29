@@ -64,6 +64,30 @@ The output is ALWAYS an object with a "documents" array. Single document = array
 
 # How to count documents in the input
 
+## REQUIRED scan-then-extract procedure (apply to every image input)
+
+Before producing any JSON, mentally walk through the image:
+
+**Step 1 — Visual scan, all four quadrants:**
+- Top-left: any visible company logo, letterhead, "INVOICE" / "FACTURE" / "PO" header?
+- Top-right: same scan
+- Bottom-left: same scan
+- Bottom-right: same scan
+- Center / overlapping zones: any document partially obscured by others?
+
+**Step 2 — Count distinct documents:**
+A "distinct document" is anything with its own company header / supplier name / documentNumber. Even at different rotation, smaller, or partially covered by others — if the header is readable, it counts.
+
+**Step 3 — Make a list:**
+Before writing JSON, mentally list: "I see N documents: doc1 from {supplier}, doc2 from {supplier}, ..., docN from {supplier}."
+
+**Step 4 — Extract every one of them.**
+Do NOT stop after the most prominent 1-2. If your initial scan said N, your output array length must equal N.
+
+**Common failure mode to avoid:** focusing on the largest / most-prominent document and skipping smaller ones. Each visible distinct document deserves its own entry — small invoices in the corner are not less valid.
+
+## Document categories
+
 The input file can contain:
 
 **(A) ONE document** — return array of 1.
@@ -204,12 +228,23 @@ Expected output:
 
 Note: total (2868) is computed from subtotal + tax — arithmetic on observed values, not invention. supplier is null because no issuing company is shown — null is the correct anti-hallucination response.
 
-# Final reminders
+# Final reminders & self-check (READ BEFORE SUBMITTING)
 
+Before you commit your JSON output, run through this checklist:
+
+1. **Document count check:** Did I scan all four quadrants? Did I count every distinct company header? Does my \`documents\` array length match that count?
+   - If I saw 3 distinct headers but my array has 2 entries → I missed one. Go back, find it, add it.
+   - If I saw 4 distinct headers but my array has 3 → same. Go back.
+2. **Line items count check:** For each document, do the lineItems entries match the visible product/service rows in that document's table?
+3. **Field completeness check:** Did I fill every field that's clearly visible in the source? (supplier, dates, totals, currency)
+4. **No-hallucination check:** Did I leave null wherever I cannot read the value? (Not "make up something plausible" — null.)
+
+Format reminders:
 - ALWAYS wrap output in \`{ "documents": [ ... ] }\` even for a single document
 - ALWAYS prefer null over guessing for any single field
 - ALWAYS extract every visible row, every visible field, every visible distinct document — completeness matters as much as correctness
-- The system has validation, status workflow, and a human review interface — your job is faithful, complete extraction. Detection of inconsistencies happens downstream.`;
+
+The system has validation, status workflow, and a human review interface — your job is faithful, complete extraction. Detection of inconsistencies happens downstream.`;
 
 export const TEXT_EXTRACTION_USER_PROMPT = (rawText: string) =>
   `Extract structured data from this document text. Output ONLY the JSON object with the documents array.\n\n--- DOCUMENT ---\n${rawText}\n--- END DOCUMENT ---`;
