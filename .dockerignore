@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env*.local
+.firebase
+*.log
+coverage
+.vscode
+.idea
+mastery_task/resources/*.pdf
+mastery_task/resources/*.png
+mastery_task/resources/*.csv

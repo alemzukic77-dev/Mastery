@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,17 @@ export function ReviewForm({ document }: Props) {
   const router = useRouter();
   const { user } = useAuth();
   const [form, setForm] = useState<ExtractedData>(toFormState(document));
+  const [syncedUpdatedAt, setSyncedUpdatedAt] = useState(document.updatedAt);
   const [busy, setBusy] = useState<"save" | "confirm" | "reject" | "delete" | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Sync form state when document refreshes (e.g. after save → Firestore push).
+  if (document.updatedAt !== syncedUpdatedAt) {
+    setSyncedUpdatedAt(document.updatedAt);
     setForm(toFormState(document));
-  }, [document]);
+  }
 
   async function callApi(body: object) {
     if (!user) throw new Error("Not authenticated");

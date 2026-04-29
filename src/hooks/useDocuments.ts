@@ -13,19 +13,14 @@ import type { ProcessedDocument } from "@/lib/types";
 import { useAuth } from "./useAuth";
 
 export function useDocuments() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      setDocuments([]);
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
-    setLoading(true);
     const q = query(
       collection(db, "users", user.uid, "documents"),
       orderBy("createdAt", "desc"),
@@ -34,9 +29,9 @@ export function useDocuments() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const docs = snapshot.docs.map((d) => normalize(d.id, d.data()));
-        setDocuments(docs);
+        setDocuments(snapshot.docs.map((d) => normalize(d.id, d.data())));
         setLoading(false);
+        setError(null);
       },
       (err) => {
         setError(err.message);
@@ -47,7 +42,11 @@ export function useDocuments() {
     return () => unsubscribe();
   }, [user]);
 
-  return { documents, loading, error };
+  return {
+    documents: user ? documents : [],
+    loading: authLoading || (loading && !!user),
+    error,
+  };
 }
 
 function normalize(id: string, data: DocumentData): ProcessedDocument {
@@ -85,7 +84,6 @@ function toIso(value: unknown): string {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && "toDate" in value) {
     try {
-      // Firestore Timestamp
       return (value as { toDate: () => Date }).toDate().toISOString();
     } catch {
       return new Date().toISOString();

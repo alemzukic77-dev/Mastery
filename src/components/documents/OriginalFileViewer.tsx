@@ -10,12 +10,11 @@ import { detectFileKind, formatFileSize } from "@/lib/utils";
 
 export function OriginalFileViewer({ file }: { file: OriginalFileMeta }) {
   const [url, setUrl] = useState<string | null>(file.downloadUrl ?? null);
-  const [loading, setLoading] = useState(!file.downloadUrl);
+  const [loading, setLoading] = useState(!file.downloadUrl && !!file.storagePath);
 
   useEffect(() => {
-    let cancelled = false;
     if (!file.storagePath || file.downloadUrl) return;
-    setLoading(true);
+    let cancelled = false;
     getDownloadURL(storageRef(storage, file.storagePath))
       .then((u) => {
         if (!cancelled) setUrl(u);

@@ -7,19 +7,14 @@ import type { ProcessedDocument } from "@/lib/types";
 import { useAuth } from "./useAuth";
 
 export function useDocument(documentId: string | null) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [document, setDocument] = useState<ProcessedDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !documentId) {
-      setDocument(null);
-      setLoading(false);
-      return;
-    }
+    if (!user || !documentId) return;
 
-    setLoading(true);
     const ref = doc(db, "users", user.uid, "documents", documentId);
     const unsubscribe = onSnapshot(
       ref,
@@ -78,5 +73,9 @@ export function useDocument(documentId: string | null) {
     return () => unsubscribe();
   }, [user, documentId]);
 
-  return { document, loading, error };
+  return {
+    document,
+    loading: authLoading || (loading && !!user && !!documentId),
+    error,
+  };
 }
