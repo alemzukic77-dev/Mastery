@@ -8,6 +8,7 @@ import type {
 import {
   autoComputeTotal,
   buildDuplicateIssue,
+  checkCurrencies,
   checkDates,
   checkLineItems,
   checkRequiredFields,
@@ -40,6 +41,7 @@ export async function runValidation(
     ...checkTotal(enrichedData),
     ...checkDates(enrichedData),
     ...checkLineItems(enrichedData),
+    ...checkCurrencies(enrichedData),
   ];
 
   if (enrichedData.documentNumber) {

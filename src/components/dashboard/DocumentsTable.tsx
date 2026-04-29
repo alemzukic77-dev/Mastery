@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Eye, Loader2, Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/documents/StatusBadge";
+import { IssueChips } from "@/components/documents/IssueChips";
+import { useAuth } from "@/hooks/useAuth";
 import type { DocumentStatus, ProcessedDocument } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -21,8 +24,10 @@ export function DocumentsTable({
 }: {
   documents: ProcessedDocument[];
 }) {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<DocumentStatus | "all">("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = documents.filter((d) => {
     if (filter !== "all" && d.status !== filter) return false;
@@ -41,6 +46,29 @@ export function DocumentsTable({
     }
     return true;
   });
+
+  async function handleDelete(doc: ProcessedDocument) {
+    if (!user) return;
+    const label = doc.documentNumber || doc.originalFile.fileName || doc.id.slice(0, 8);
+    if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+
+    setDeletingId(doc.id);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/documents/${doc.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        alert(`Delete failed: ${json.error ?? res.statusText}`);
+      }
+    } catch (err) {
+      alert(`Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -77,7 +105,7 @@ export function DocumentsTable({
           No documents match your filters.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -87,6 +115,7 @@ export function DocumentsTable({
                 <th className="px-4 py-2.5 font-medium text-right">Total</th>
                 <th className="px-4 py-2.5 font-medium">Status</th>
                 <th className="px-4 py-2.5 font-medium">Issues</th>
+                <th className="px-4 py-2.5 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y bg-background">
@@ -97,10 +126,16 @@ export function DocumentsTable({
                       href={`/documents/${doc.id}`}
                       className="font-medium text-foreground hover:underline"
                     >
-                      {doc.documentNumber || doc.originalFile.fileName || doc.id.slice(0, 8)}
+                      {doc.documentNumber ||
+                        doc.originalFile.fileName ||
+                        doc.id.slice(0, 8)}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {doc.type === "purchase_order" ? "PO" : doc.type === "invoice" ? "Invoice" : "—"}
+                      {doc.type === "purchase_order"
+                        ? "PO"
+                        : doc.type === "invoice"
+                          ? "Invoice"
+                          : "—"}
                     </p>
                   </td>
                   <td className="px-4 py-3">{doc.supplier || "—"}</td>
@@ -114,14 +149,38 @@ export function DocumentsTable({
                     <StatusBadge status={doc.status} />
                   </td>
                   <td className="px-4 py-3">
-                    {doc.validationIssues.length === 0 ? (
-                      <span className="text-muted-foreground">—</span>
-                    ) : (
-                      <span className="font-mono text-xs">
-                        {doc.validationIssues.filter((i) => i.severity === "error").length}E ·{" "}
-                        {doc.validationIssues.filter((i) => i.severity === "warning").length}W
-                      </span>
-                    )}
+                    <IssueChips issues={doc.validationIssues} max={2} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="icon"
+                        title="Open / edit"
+                      >
+                        <Link href={`/documents/${doc.id}`}>
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">Open</span>
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        title="Delete"
+                        onClick={() => handleDelete(doc)}
+                        disabled={deletingId === doc.id}
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        {deletingId === doc.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

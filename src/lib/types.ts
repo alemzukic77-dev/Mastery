@@ -16,7 +16,8 @@ export type ValidationCode =
   | "LINE_ITEM_MISMATCH"
   | "DUPLICATE_DOC_NUMBER"
   | "EXTRACTION_FAILED"
-  | "COMPUTED_TOTAL";
+  | "COMPUTED_TOTAL"
+  | "MIXED_CURRENCIES";
 
 export interface ValidationIssue {
   field: string;
@@ -30,6 +31,8 @@ export interface LineItem {
   quantity: number;
   unitPrice: number;
   amount: number;
+  /** ISO 4217. Set only when line currency differs from document-level currency. */
+  currency?: string | null;
 }
 
 export interface OriginalFileMeta {

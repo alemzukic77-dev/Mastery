@@ -5,6 +5,7 @@ export const lineItemSchema = z.object({
   quantity: z.number(),
   unitPrice: z.number(),
   amount: z.number(),
+  currency: z.string().nullable().optional(),
 });
 
 export const extractedDataSchema = z.object({

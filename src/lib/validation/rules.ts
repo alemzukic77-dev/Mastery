@@ -117,6 +117,32 @@ export function checkLineItems(doc: ExtractedData): ValidationIssue[] {
   return issues;
 }
 
+export function checkCurrencies(doc: ExtractedData): ValidationIssue[] {
+  if (!doc.currency) return [];
+  const mismatches = doc.lineItems
+    .map((item, index) => ({ item, index }))
+    .filter(
+      ({ item }) =>
+        item.currency &&
+        item.currency.toUpperCase() !== doc.currency!.toUpperCase(),
+    );
+
+  if (mismatches.length === 0) return [];
+
+  const distinctCurrencies = Array.from(
+    new Set(mismatches.map((m) => m.item.currency!.toUpperCase())),
+  );
+
+  return [
+    {
+      field: "lineItems",
+      severity: "warning",
+      message: `Document currency is ${doc.currency.toUpperCase()} but ${mismatches.length} line item(s) use ${distinctCurrencies.join(", ")}. Conversion to document currency may be required.`,
+      code: "MIXED_CURRENCIES",
+    },
+  ];
+}
+
 export function autoComputeTotal(data: ExtractedData): {
   data: ExtractedData;
   issues: ValidationIssue[];

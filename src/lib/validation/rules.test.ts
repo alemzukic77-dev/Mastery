@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   autoComputeTotal,
+  checkCurrencies,
   checkDates,
   checkLineItems,
   checkRequiredFields,
@@ -186,5 +187,62 @@ describe("autoComputeTotal", () => {
     };
     const { data } = autoComputeTotal(doc);
     expect(data.total).toBe(122.34);
+  });
+});
+
+describe("checkCurrencies", () => {
+  it("returns no issues when all line items match document currency", () => {
+    expect(checkCurrencies(baseDoc)).toEqual([]);
+  });
+
+  it("returns no issues when line items have null currency (default to doc currency)", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      currency: "USD",
+      lineItems: [
+        { description: "A", quantity: 1, unitPrice: 10, amount: 10, currency: null },
+        { description: "B", quantity: 1, unitPrice: 20, amount: 20 },
+      ],
+    };
+    expect(checkCurrencies(doc)).toEqual([]);
+  });
+
+  it("flags MIXED_CURRENCIES when a line uses different currency", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      currency: "EUR",
+      lineItems: [
+        { description: "Local", quantity: 1, unitPrice: 100, amount: 100 },
+        { description: "Foreign", quantity: 1, unitPrice: 50, amount: 50, currency: "USD" },
+      ],
+    };
+    const issues = checkCurrencies(doc);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].code).toBe("MIXED_CURRENCIES");
+    expect(issues[0].severity).toBe("warning");
+    expect(issues[0].message).toContain("EUR");
+    expect(issues[0].message).toContain("USD");
+  });
+
+  it("treats currency comparison case-insensitively", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      currency: "eur",
+      lineItems: [
+        { description: "X", quantity: 1, unitPrice: 1, amount: 1, currency: "EUR" },
+      ],
+    };
+    expect(checkCurrencies(doc)).toEqual([]);
+  });
+
+  it("returns no issues when document currency is missing", () => {
+    const doc: ExtractedData = {
+      ...baseDoc,
+      currency: null,
+      lineItems: [
+        { description: "X", quantity: 1, unitPrice: 1, amount: 1, currency: "USD" },
+      ],
+    };
+    expect(checkCurrencies(doc)).toEqual([]);
   });
 });

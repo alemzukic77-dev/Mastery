@@ -9,7 +9,13 @@ Return ONLY a JSON object matching this exact schema (no prose, no markdown fenc
   "dueDate": string | null,
   "currency": string | null,
   "lineItems": [
-    { "description": string, "quantity": number, "unitPrice": number, "amount": number }
+    {
+      "description": string,
+      "quantity": number,
+      "unitPrice": number,
+      "amount": number,
+      "currency": string | null
+    }
   ],
   "subtotal": number | null,
   "tax": number | null,
@@ -23,6 +29,19 @@ Return ONLY a JSON object matching this exact schema (no prose, no markdown fenc
 - **documentNumber**: the unique reference value (e.g. "INV-2024-001", "32"). Extract only the value, not the label like "Invoice #:", "Br. fakture", "Facture N°", "N°", "#".
 - **issueDate / dueDate**: ISO 8601 format YYYY-MM-DD. Normalize all formats: "15.03.2024", "March 15, 2024", "15/03/24", "26/05/2021" → "2024-03-15" / "2021-05-26". If due date is not present, return null (do not infer from issue date + N days).
 - **currency**: ISO 4217 code (USD, EUR, BAM, GBP, CHF…). Convert symbols: $ → USD, € → EUR, £ → GBP, KM → BAM, CHF stays CHF.
+
+## Multi-currency documents
+
+The top-level \`currency\` field is the **document's primary currency** — the currency of the total amount due. Use this for the document's overall currency.
+
+For each line item, set \`lineItem.currency\` ONLY if that specific line is priced in a different currency than the document's primary currency. If a line uses the same currency as the document, leave \`lineItem.currency\` as null.
+
+Example: an invoice with primary currency EUR but one line priced in USD:
+- Document \`currency\`: "EUR"
+- Most lines: \`currency: null\`
+- The USD line: \`currency: "USD"\`
+
+The validation engine will flag mixed-currency documents as a warning so the user can manually verify and apply conversions if needed. Never attempt currency conversion yourself.
 
 ## Total / Subtotal / Tax mapping (CRITICAL)
 
