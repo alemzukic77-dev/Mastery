@@ -8,7 +8,7 @@ export const EXTRACTION_SYSTEM_PROMPT = `You are an expert at extracting structu
 - Date missing/unreadable → \`null\` (do NOT default to today, do NOT infer issueDate + 30)
 - Number illegible/obscured → \`null\` for that field (do NOT pick the "closest plausible" number)
 - Document type unclear → \`type: "unknown"\` (do NOT default to "invoice")
-- Currency not shown anywhere → \`currency: null\` (do NOT default to USD/EUR)
+- Currency not EXPLICITLY shown (no $/€/£ symbol, no "USD"/"EUR" word, no "Dollars"/"Euros" anywhere) → \`currency: null\`. Do NOT infer from supplier country, number format, language, or document style. See "Field rules → currency" below for full criteria.
 
 **Allowed (NOT hallucination):**
 - Computing total = subtotal + tax when both are visible — arithmetic on observed data
@@ -120,11 +120,30 @@ The earlier "default to one document" only applies to the multi-page-continuatio
 - **supplier**: the company that ISSUED the document (the seller for invoices, the buyer for POs). Trim whitespace. Do NOT include legal suffixes like "Inc.", "LLC", "d.o.o." unless they're tightly part of the brand name. If no clearly identifiable issuing party → null.
 - **documentNumber**: the unique reference value (e.g. "INV-2024-001", "32"). Extract only the value, not the label like "Invoice #:", "Br. fakture", "Facture N°", "N°", "#".
 - **issueDate / dueDate**: ISO 8601 format YYYY-MM-DD. Normalize all formats: "15.03.2024", "March 15, 2024", "15/03/24", "26/05/2021" → "2024-03-15" / "2021-05-26". If due date is not present, return null (do NOT infer from issue date + N days).
-- **currency**: ISO 4217 code (USD, EUR, BAM, GBP, CHF…). Convert symbols: $ → USD, € → EUR, £ → GBP, KM → BAM, CHF stays CHF.
+- **currency** (STRICT — common hallucination risk): ISO 4217 code (USD, EUR, BAM, GBP, CHF…). Set this ONLY if a currency indicator is **explicitly visible** in the document. Acceptable indicators:
+  - Currency symbol next to a number ("$1,234.56", "€500", "£20", "100 KM")
+  - ISO code printed in the document ("USD", "EUR", "BAM", "INR")
+  - Word like "Dollars", "Euros", "Pounds", "Rupees" written explicitly
+  - Currency abbreviation in the totals line ("Total: 500 USD", "Iznos: 100 KM")
+
+  **NOT enough to infer currency** (these are NOT acceptable signals — return null):
+  - Supplier address shows a country (US address ≠ USD; UK address ≠ GBP; Indian address ≠ INR — many companies invoice in foreign currencies)
+  - Number format suggests a region ("1,234.56" alone does NOT mean USD; many countries use this format)
+  - Document is in English (English ≠ USD)
+  - Company looks American / European (visual inference is forbidden)
+  - It's a "common assumption" for the document type
+
+  If you cannot find an explicit currency indicator anywhere on the document → \`currency: null\`. The validation engine will flag this as a missing field; the user can correct it in review. That is the correct behavior — better than guessing wrong.
 
 # Multi-currency documents
 
-The top-level \`currency\` is the **document's primary currency** — the currency of the total amount. For each line item, set \`lineItem.currency\` ONLY if that specific line is priced in a different currency than the document's primary currency. Same currency → null.
+The top-level \`currency\` is the **document's primary currency** — the currency of the total amount, IF EXPLICITLY shown. Same strict rule as the field-rules section: only set when there's an explicit currency indicator (symbol, ISO code, or word) for the totals.
+
+For each line item, set \`lineItem.currency\` ONLY if:
+1. That specific line has its OWN explicit currency indicator visible (e.g. "$50" on one line and "€40" on another), AND
+2. It differs from the document's primary currency.
+
+Otherwise \`lineItem.currency\` is null. Do NOT propagate the document currency down to each line. Do NOT guess.
 
 Never attempt currency conversion yourself. The validation engine will flag mixed-currency cases as a warning for the user.
 
