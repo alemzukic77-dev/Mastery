@@ -261,9 +261,9 @@ export function ReviewForm({ document }: Props) {
             {form.lineItems.map((item, idx) => (
               <div
                 key={idx}
-                className="grid grid-cols-12 items-start gap-2 rounded-md border bg-card p-3"
+                className="grid grid-cols-2 items-start gap-2 rounded-md border bg-card p-3 md:grid-cols-12"
               >
-                <div className="col-span-12 md:col-span-5">
+                <div className="col-span-2 md:col-span-5">
                   <Label className="text-xs text-muted-foreground">
                     Description
                   </Label>
@@ -276,7 +276,7 @@ export function ReviewForm({ document }: Props) {
                     className="mt-1 min-h-10"
                   />
                 </div>
-                <div className="col-span-4 md:col-span-2">
+                <div className="col-span-1 md:col-span-2">
                   <Label className="text-xs text-muted-foreground">Qty</Label>
                   <Input
                     type="number"
@@ -289,7 +289,7 @@ export function ReviewForm({ document }: Props) {
                     className="mt-1"
                   />
                 </div>
-                <div className="col-span-4 md:col-span-2">
+                <div className="col-span-1 md:col-span-2">
                   <Label className="text-xs text-muted-foreground">
                     Unit price
                   </Label>
@@ -304,7 +304,7 @@ export function ReviewForm({ document }: Props) {
                     className="mt-1"
                   />
                 </div>
-                <div className="col-span-3 md:col-span-2">
+                <div className="col-span-1 md:col-span-2">
                   <Label className="text-xs text-muted-foreground">Amount</Label>
                   <Input
                     type="number"
@@ -317,7 +317,7 @@ export function ReviewForm({ document }: Props) {
                     className="mt-1"
                   />
                 </div>
-                <div className="col-span-1 flex items-end justify-end">
+                <div className="col-span-1 flex items-end justify-end md:col-span-1">
                   <Button
                     type="button"
                     size="icon"

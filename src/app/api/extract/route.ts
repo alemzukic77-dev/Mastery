@@ -4,9 +4,16 @@ import { extract } from "@/lib/extractors";
 import { runValidation } from "@/lib/validation/runner";
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import type { ExtractedData } from "@/lib/types";
+import {
+  aggregateInputsFromDoc,
+  applyAggregateDelta,
+} from "@/lib/aggregates";
+import { checkAndIncrementRateLimit, RateLimitError } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,6 +36,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
     }
     const userId = decoded.uid;
+
+    try {
+      await checkAndIncrementRateLimit(userId);
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        return NextResponse.json(
+          {
+            error: `Premašen limit zahtjeva (${err.window}, max ${err.limit}). Pokušaj ponovo za ~${err.retryAfterSec}s.`,
+            window: err.window,
+            retryAfterSec: err.retryAfterSec,
+          },
+          {
+            status: 429,
+            headers: { "Retry-After": String(err.retryAfterSec) },
+          },
+        );
+      }
+      throw err;
+    }
 
     const body = (await req.json()) as { documentId?: string };
     const documentId = body.documentId;
@@ -74,6 +100,16 @@ export async function POST(req: NextRequest) {
     const bucket = adminStorage().bucket();
     const [fileBuffer] = await bucket.file(original.storagePath).download();
 
+    if (fileBuffer.byteLength > MAX_FILE_SIZE_BYTES) {
+      const sizeMb = (fileBuffer.byteLength / 1024 / 1024).toFixed(1);
+      return NextResponse.json(
+        {
+          error: `Fajl prevelik (${sizeMb}MB). Maksimum je ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`,
+        },
+        { status: 413 },
+      );
+    }
+
     let extracted;
     try {
       extracted = await extract({
@@ -83,18 +119,25 @@ export async function POST(req: NextRequest) {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extraction failed";
-      await docRef.update({
-        status: "needs_review",
+      const before = aggregateInputsFromDoc(data);
+      const failurePatch = {
+        status: "needs_review" as const,
         validationIssues: [
           {
             field: "_extractor",
-            severity: "error",
+            severity: "error" as const,
             message,
-            code: "EXTRACTION_FAILED",
+            code: "EXTRACTION_FAILED" as const,
           },
         ],
         updatedAt: FieldValue.serverTimestamp(),
+      };
+      await docRef.update(failurePatch);
+      const after = aggregateInputsFromDoc({
+        ...data,
+        ...failurePatch,
       });
+      await applyAggregateDelta(db, userId, before, after);
       return NextResponse.json({ error: message }, { status: 422 });
     }
 
@@ -105,6 +148,7 @@ export async function POST(req: NextRequest) {
       db,
       userId,
       docRef,
+      beforeData: data,
       extractedData: docs[0],
       raw: extracted.raw,
       documentIndex: 0,
@@ -120,16 +164,28 @@ export async function POST(req: NextRequest) {
           .collection("documents")
           .doc();
 
-        await newDocRef.create({
+        const initial = {
           originalFile: original,
+          status: "uploaded" as const,
+          validationIssues: [],
+          total: null,
+          currency: null,
           createdAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
-        });
+        };
+        await newDocRef.create(initial);
+        await applyAggregateDelta(
+          db,
+          userId,
+          null,
+          aggregateInputsFromDoc(initial),
+        );
 
         await persistDocument({
           db,
           userId,
           docRef: newDocRef,
+          beforeData: initial,
           extractedData: docs[i],
           raw: extracted.raw,
           documentIndex: i,
@@ -172,6 +228,7 @@ interface PersistOpts {
   db: Firestore;
   userId: string;
   docRef: FirebaseFirestore.DocumentReference;
+  beforeData: FirebaseFirestore.DocumentData | undefined;
   extractedData: ExtractedData;
   raw: unknown;
   documentIndex: number;
@@ -180,7 +237,8 @@ interface PersistOpts {
 async function persistDocument(
   opts: PersistOpts,
 ): Promise<{ status: string; issuesCount: number }> {
-  const { db, userId, docRef, extractedData, raw, documentIndex } = opts;
+  const { db, userId, docRef, beforeData, extractedData, raw, documentIndex } =
+    opts;
 
   const validation = await runValidation({
     data: extractedData,
@@ -189,14 +247,25 @@ async function persistDocument(
     db,
   });
 
-  await docRef.update({
+  const updatePayload = {
     ...validation.data,
     rawExtraction: raw,
     validationIssues: validation.issues,
     status: validation.status,
     documentIndex,
     updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  await docRef.update(updatePayload);
+
+  const before = aggregateInputsFromDoc(beforeData);
+  const after = aggregateInputsFromDoc({
+    ...beforeData,
+    ...validation.data,
+    validationIssues: validation.issues,
+    status: validation.status,
   });
+  await applyAggregateDelta(db, userId, before, after);
 
   return {
     status: validation.status,

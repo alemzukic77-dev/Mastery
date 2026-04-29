@@ -101,7 +101,7 @@ export function UploadDropzone() {
       <div
         {...getRootProps()}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/20 px-6 py-16 text-center transition-colors hover:bg-muted/40",
+          "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-muted/20 px-4 py-10 text-center transition-colors hover:bg-muted/40 sm:px-6 sm:py-16",
           isDragActive && "border-primary bg-primary/5",
         )}
       >

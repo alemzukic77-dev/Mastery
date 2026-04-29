@@ -1,49 +1,44 @@
 import { AlertTriangle, CheckCircle2, Clock, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { ProcessedDocument } from "@/lib/types";
+import type { AggregateStats } from "@/hooks/useStats";
 import { formatCurrency } from "@/lib/utils";
 
-export function StatsCards({ documents }: { documents: ProcessedDocument[] }) {
-  const total = documents.length;
-  const validated = documents.filter((d) => d.status === "validated").length;
-  const needsReview = documents.filter((d) => d.status === "needs_review").length;
-  const totalIssues = documents.reduce(
-    (acc, d) => acc + d.validationIssues.length,
-    0,
-  );
-
-  const totalsByCurrency = computeTotalsByCurrency(documents);
+export function StatsCards({ stats }: { stats: AggregateStats }) {
+  const totalsByCurrency = Object.entries(stats.validatedTotalsByCurrency)
+    .map(([currency, v]) => ({ currency, ...v }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => b.amount - a.amount);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       <Stat
         icon={<FileText className="h-4 w-4" />}
         label="Total documents"
-        value={String(total)}
+        value={String(stats.totalCount)}
       />
       <Stat
         icon={<CheckCircle2 className="h-4 w-4 text-success" />}
         label="Validated"
-        value={String(validated)}
+        value={String(stats.byStatus.validated ?? 0)}
       />
       <Stat
         icon={<Clock className="h-4 w-4 text-warning" />}
         label="Needs review"
-        value={String(needsReview)}
+        value={String(stats.byStatus.needs_review ?? 0)}
       />
       <Stat
         icon={<AlertTriangle className="h-4 w-4 text-destructive" />}
         label="Open issues"
-        value={String(totalIssues)}
+        value={String(stats.openIssuesCount)}
       />
 
       {totalsByCurrency.length > 0 ? (
-        <Card className="sm:col-span-2 lg:col-span-4">
-          <CardContent className="p-4">
+        <Card className="col-span-1 sm:col-span-2 lg:col-span-4">
+          <CardContent className="p-5">
             <p className="mb-3 text-sm font-medium text-muted-foreground">
               Validated totals by currency
             </p>
-            <div className="flex flex-wrap gap-x-8 gap-y-2">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 sm:gap-x-8">
               {totalsByCurrency.map((row) => (
                 <div key={row.currency} className="flex items-baseline gap-2">
                   <span className="text-lg font-semibold">
@@ -73,27 +68,13 @@ function Stat({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-5">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon}
           {label}
         </div>
-        <p className="mt-2 text-2xl font-bold">{value}</p>
+        <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
       </CardContent>
     </Card>
   );
-}
-
-function computeTotalsByCurrency(documents: ProcessedDocument[]) {
-  const map = new Map<string, { amount: number; count: number }>();
-  for (const d of documents) {
-    if (d.status !== "validated" || d.total === null || !d.currency) continue;
-    const existing = map.get(d.currency) ?? { amount: 0, count: 0 };
-    existing.amount += d.total;
-    existing.count += 1;
-    map.set(d.currency, existing);
-  }
-  return Array.from(map.entries())
-    .map(([currency, v]) => ({ currency, ...v }))
-    .sort((a, b) => b.amount - a.amount);
 }

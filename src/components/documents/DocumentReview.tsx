@@ -64,11 +64,11 @@ export function DocumentReview({ documentId }: { documentId: string }) {
       <SiblingNav document={document} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">
+        <div className="order-2 lg:order-1 lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">
           <OriginalFileViewer file={document.originalFile} />
         </div>
 
-        <div className="space-y-6">
+        <div className="order-1 space-y-6 lg:order-2">
           <ValidationPanel issues={document.validationIssues} />
           <ReviewForm document={document} />
         </div>

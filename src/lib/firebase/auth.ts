@@ -2,12 +2,17 @@
 
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./client";
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 export async function signUp(email: string, password: string): Promise<User> {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -24,6 +29,27 @@ export async function signUp(email: string, password: string): Promise<User> {
 
 export async function signIn(email: string, password: string): Promise<User> {
   const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
+}
+
+export async function signInWithGoogle(): Promise<User> {
+  const cred = await signInWithPopup(auth, googleProvider);
+  const userRef = doc(db, "users", cred.user.uid);
+  const existing = await getDoc(userRef);
+
+  await setDoc(
+    userRef,
+    {
+      email: cred.user.email,
+      displayName: cred.user.displayName,
+      photoURL: cred.user.photoURL,
+      provider: "google",
+      lastLoginAt: serverTimestamp(),
+      ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
+    },
+    { merge: true },
+  );
+
   return cred.user;
 }
 

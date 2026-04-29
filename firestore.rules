@@ -2,13 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own profile
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Documents are scoped per user
+      // Documents: client may read its own and update/delete existing docs
+      // (e.g. patching storagePath after upload). Creation is server-only via
+      // Admin SDK so aggregates stay consistent.
       match /documents/{documentId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, update, delete:
+          if request.auth != null && request.auth.uid == userId;
+        allow create: if false;
+      }
+
+      // Aggregates are denormalized counters maintained by server only.
+      match /aggregates/{document} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
       }
     }
   }

@@ -4,6 +4,10 @@ import { adminAuth, adminDb, adminStorage } from "@/lib/firebase/admin";
 import { extractedDataSchema } from "@/lib/validation/schemas";
 import { runValidation } from "@/lib/validation/runner";
 import type { DocumentStatus } from "@/lib/types";
+import {
+  aggregateInputsFromDoc,
+  applyAggregateDelta,
+} from "@/lib/aggregates";
 
 export const runtime = "nodejs";
 
@@ -43,21 +47,37 @@ export async function PATCH(
     if (!snap.exists) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    const beforeData = snap.data();
+    const before = aggregateInputsFromDoc(beforeData);
 
     if (body.action === "reject") {
-      await docRef.update({
+      const updatePayload = {
         status: "rejected" satisfies DocumentStatus,
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      await docRef.update(updatePayload);
+      await applyAggregateDelta(
+        db,
+        userId,
+        before,
+        aggregateInputsFromDoc({ ...beforeData, ...updatePayload }),
+      );
       return NextResponse.json({ ok: true, status: "rejected" });
     }
 
     if (body.action === "confirm") {
-      await docRef.update({
+      const updatePayload = {
         status: "validated" satisfies DocumentStatus,
         validatedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      await docRef.update(updatePayload);
+      await applyAggregateDelta(
+        db,
+        userId,
+        before,
+        aggregateInputsFromDoc({ ...beforeData, ...updatePayload }),
+      );
       return NextResponse.json({ ok: true, status: "validated" });
     }
 
@@ -83,6 +103,18 @@ export async function PATCH(
         status: validation.status,
         updatedAt: FieldValue.serverTimestamp(),
       });
+
+      await applyAggregateDelta(
+        db,
+        userId,
+        before,
+        aggregateInputsFromDoc({
+          ...beforeData,
+          ...validation.data,
+          validationIssues: validation.issues,
+          status: validation.status,
+        }),
+      );
 
       return NextResponse.json({
         ok: true,
@@ -121,6 +153,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     const data = snap.data();
+    const before = aggregateInputsFromDoc(data);
     const storagePath = data?.originalFile?.storagePath as string | undefined;
     if (storagePath) {
       await adminStorage()
@@ -130,6 +163,7 @@ export async function DELETE(
         .catch(() => null);
     }
     await docRef.delete();
+    await applyAggregateDelta(db, userId, before, null);
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof Response) return err;

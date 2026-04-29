@@ -63,10 +63,10 @@ export function OriginalFileViewer({ file }: { file: OriginalFileMeta }) {
           <iframe
             src={url}
             title="Document preview"
-            className="h-full min-h-[600px] w-full rounded border"
+            className="h-full min-h-[400px] w-full rounded border md:min-h-[600px]"
           />
         ) : kind === "image" ? (
-          <div className="relative h-full min-h-[400px] w-full">
+          <div className="relative h-full min-h-[300px] w-full md:min-h-[400px]">
             <Image
               src={url}
               alt={file.fileName}

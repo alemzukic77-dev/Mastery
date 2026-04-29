@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDocuments } from "@/hooks/useDocuments";
+import { useStats } from "@/hooks/useStats";
 import { DocumentsTable } from "./DocumentsTable";
 import { StatsCards } from "./StatsCards";
 
 export function DashboardClient() {
-  const { documents, loading, error } = useDocuments();
+  const { stats, loading, error } = useStats();
 
-  if (loading) {
+  if (loading || !stats) {
     return (
       <div className="flex h-40 items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -21,12 +21,12 @@ export function DashboardClient() {
   if (error) {
     return (
       <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        Failed to load documents: {error}
+        Failed to load stats: {error}
       </p>
     );
   }
 
-  if (documents.length === 0) {
+  if (stats.totalCount === 0) {
     return (
       <div className="rounded-lg border border-dashed bg-muted/30 px-6 py-16 text-center">
         <h3 className="text-lg font-semibold">No documents yet</h3>
@@ -46,8 +46,8 @@ export function DashboardClient() {
 
   return (
     <div className="space-y-8">
-      <StatsCards documents={documents} />
-      <DocumentsTable documents={documents} />
+      <StatsCards stats={stats} />
+      <DocumentsTable />
     </div>
   );
 }

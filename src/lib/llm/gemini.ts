@@ -21,8 +21,7 @@ export function getExtractionModel(): GenerativeModel {
     generationConfig: {
       temperature: 0.15,
       responseMimeType: "application/json",
-      // Bump to maximum to avoid truncation on multi-doc inputs with many line items
-      maxOutputTokens: 8192,
+      maxOutputTokens: 4096,
     },
   });
 }

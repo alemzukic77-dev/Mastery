@@ -3,6 +3,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "firebase-admin"],
+  devIndicators: false,
   turbopack: {
     root: path.join(__dirname),
   },
