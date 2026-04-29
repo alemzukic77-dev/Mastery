@@ -1,7 +1,11 @@
 "use client";
 
+import Link from "next/link";
+import { Loader2, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useDocuments } from "@/hooks/useDocuments";
-import { Loader2 } from "lucide-react";
+import { DocumentsTable } from "./DocumentsTable";
+import { StatsCards } from "./StatsCards";
 
 export function DashboardClient() {
   const { documents, loading, error } = useDocuments();
@@ -30,13 +34,20 @@ export function DashboardClient() {
           Upload your first invoice or purchase order to start extracting and
           validating data.
         </p>
+        <Button asChild className="mt-6">
+          <Link href="/upload">
+            <Upload className="h-4 w-4" />
+            Upload documents
+          </Link>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="text-sm text-muted-foreground">
-      {documents.length} document(s) loaded.
+    <div className="space-y-8">
+      <StatsCards documents={documents} />
+      <DocumentsTable documents={documents} />
     </div>
   );
 }
