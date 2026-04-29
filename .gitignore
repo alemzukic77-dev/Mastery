@@ -58,3 +58,6 @@ next-env.d.ts
 .idea/
 *.swp
 *.swo
+
+# claude code session state
+.claude/
