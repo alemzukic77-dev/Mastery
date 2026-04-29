@@ -47,6 +47,13 @@ export function useDocument(documentId: string | null) {
               fileName: "",
             },
             rawExtraction: data.rawExtraction,
+            documentIndex:
+              typeof data.documentIndex === "number"
+                ? data.documentIndex
+                : undefined,
+            siblingIds: Array.isArray(data.siblingIds)
+              ? (data.siblingIds as string[])
+              : undefined,
             createdAt:
               typeof data.createdAt?.toDate === "function"
                 ? data.createdAt.toDate().toISOString()

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { extractedDataSchema, safeParseExtraction } from "./schemas";
+import {
+  extractedDataSchema,
+  safeParseExtraction,
+  safeParseExtractions,
+} from "./schemas";
 
 describe("extractedDataSchema", () => {
   it("parses a complete valid object", () => {
@@ -77,5 +81,47 @@ describe("extractedDataSchema", () => {
       },
     });
     expect(out?.supplier).toBe("Inner");
+  });
+});
+
+describe("safeParseExtractions", () => {
+  it("returns all documents from { documents: [...] } envelope", () => {
+    const out = safeParseExtractions({
+      documents: [
+        { type: "invoice", supplier: "A", documentNumber: "1", total: 10 },
+        { type: "invoice", supplier: "B", documentNumber: "2", total: 20 },
+        { type: "invoice", supplier: "C", documentNumber: "3", total: 30 },
+      ],
+    });
+    expect(out).toHaveLength(3);
+    expect(out.map((d) => d.supplier)).toEqual(["A", "B", "C"]);
+  });
+
+  it("wraps a single object input in array of 1", () => {
+    const out = safeParseExtractions({
+      type: "invoice",
+      supplier: "Solo",
+      documentNumber: "1",
+      total: 50,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].supplier).toBe("Solo");
+  });
+
+  it("returns empty array for null/undefined input", () => {
+    expect(safeParseExtractions(null)).toEqual([]);
+    expect(safeParseExtractions(undefined)).toEqual([]);
+  });
+
+  it("filters out invalid entries but keeps valid ones", () => {
+    const out = safeParseExtractions({
+      documents: [
+        { type: "invoice", supplier: "Valid", documentNumber: "1", total: 10 },
+        { type: "not-a-valid-type", supplier: 123 }, // bad
+        { type: "invoice", supplier: "Also valid", documentNumber: "3", total: 30 },
+      ],
+    });
+    expect(out).toHaveLength(2);
+    expect(out.map((d) => d.supplier)).toEqual(["Valid", "Also valid"]);
   });
 });

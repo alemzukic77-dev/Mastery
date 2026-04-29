@@ -24,40 +24,62 @@ export const extractedDataSchema = z.object({
 export type ExtractedDataInput = z.input<typeof extractedDataSchema>;
 export type ExtractedDataParsed = z.output<typeof extractedDataSchema>;
 
+/**
+ * Extract a single document from the LLM output.
+ * Tolerates: array of docs, { documents: [...] } wrapper, single object.
+ * Returns the FIRST valid extraction or null.
+ */
 export function safeParseExtraction(raw: unknown): ExtractedDataParsed | null {
-  // Defensive: if the LLM returned an array (e.g. multiple invoices in one image),
-  // take the first element. The prompt asks for a single object, but be tolerant.
-  const candidate = Array.isArray(raw) ? raw[0] : raw;
-  if (candidate === undefined || candidate === null) return null;
-
-  // Defensive: if the LLM wrapped the result in { documents: [...] } or { invoice: {...} },
-  // unwrap common wrapper keys.
-  const unwrapped =
-    typeof candidate === "object" && candidate !== null
-      ? unwrapPossibleEnvelope(candidate as Record<string, unknown>)
-      : candidate;
-
-  const result = extractedDataSchema.safeParse(unwrapped);
-  if (result.success) return result.data;
-  return null;
+  const all = safeParseExtractions(raw);
+  return all.length > 0 ? all[0] : null;
 }
 
-function unwrapPossibleEnvelope(
-  obj: Record<string, unknown>,
-): Record<string, unknown> {
-  // If object has a known top-level field (type, supplier, total, lineItems), it's the data itself
-  if ("type" in obj || "supplier" in obj || "lineItems" in obj || "total" in obj) {
-    return obj;
+/**
+ * Parse one or more documents from LLM output. Always returns an array
+ * (empty if nothing valid was found). Accepts these shapes:
+ *  - { documents: [{...}, {...}] }       (preferred LLM contract)
+ *  - [{...}, {...}]                       (bare array)
+ *  - {...}                                (single object — wrapped in array of 1)
+ *  - { invoice: {...} } / { data: {...} } (legacy single-object envelopes)
+ */
+export function safeParseExtractions(raw: unknown): ExtractedDataParsed[] {
+  const candidates = normalizeToArray(raw);
+  const results: ExtractedDataParsed[] = [];
+  for (const candidate of candidates) {
+    const parsed = extractedDataSchema.safeParse(candidate);
+    if (parsed.success) results.push(parsed.data);
   }
-  // Look for common wrapper keys
-  for (const key of ["document", "invoice", "data", "result", "documents", "invoices"]) {
+  return results;
+}
+
+function normalizeToArray(raw: unknown): unknown[] {
+  if (raw === null || raw === undefined) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "object") return [];
+
+  const obj = raw as Record<string, unknown>;
+
+  // Preferred shape: { documents: [...] }
+  if (Array.isArray(obj.documents)) return obj.documents as unknown[];
+
+  // Legacy / alternate envelopes: { invoices: [...] }, { data: [...] }, { results: [...] }
+  for (const key of ["invoices", "data", "results"]) {
     const inner = obj[key];
-    if (Array.isArray(inner) && inner.length > 0) {
-      return inner[0] as Record<string, unknown>;
-    }
-    if (inner && typeof inner === "object") {
-      return inner as Record<string, unknown>;
+    if (Array.isArray(inner)) return inner as unknown[];
+  }
+
+  // Single-object envelopes: { invoice: {...} }, { document: {...} }, { data: {...} }
+  for (const key of ["invoice", "document", "data", "result"]) {
+    const inner = obj[key];
+    if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+      return [inner];
     }
   }
-  return obj;
+
+  // Single document at top level (has known field) — wrap in array
+  if ("type" in obj || "supplier" in obj || "lineItems" in obj || "total" in obj) {
+    return [obj];
+  }
+
+  return [];
 }

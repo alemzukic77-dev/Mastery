@@ -1,7 +1,7 @@
 import "server-only";
 import { getExtractionModel } from "@/lib/llm/gemini";
 import { TEXT_EXTRACTION_USER_PROMPT } from "@/lib/llm/prompts";
-import { safeParseExtraction } from "@/lib/validation/schemas";
+import { safeParseExtractions } from "@/lib/validation/schemas";
 import type { ExtractorInput, ExtractorResult } from "./index";
 
 export async function extractFromTxt(
@@ -14,7 +14,9 @@ export async function extractFromTxt(
   const result = await model.generateContent(TEXT_EXTRACTION_USER_PROMPT(text));
   const responseText = result.response.text();
   const json = JSON.parse(responseText);
-  const data = safeParseExtraction(json);
-  if (!data) throw new Error("Extraction did not match expected schema");
-  return { data, raw: json };
+  const documents = safeParseExtractions(json);
+  if (documents.length === 0) {
+    throw new Error("Extraction did not match expected schema");
+  }
+  return { documents, raw: json };
 }

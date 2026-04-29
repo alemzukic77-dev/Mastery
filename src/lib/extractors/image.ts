@@ -1,7 +1,7 @@
 import "server-only";
 import { getExtractionModel } from "@/lib/llm/gemini";
 import { FILE_EXTRACTION_USER_PROMPT } from "@/lib/llm/prompts";
-import { safeParseExtraction } from "@/lib/validation/schemas";
+import { safeParseExtractions } from "@/lib/validation/schemas";
 import type { ExtractorInput, ExtractorResult } from "./index";
 
 export async function extractFromImage(
@@ -21,7 +21,9 @@ export async function extractFromImage(
   ]);
   const text = result.response.text();
   const json = JSON.parse(text);
-  const data = safeParseExtraction(json);
-  if (!data) throw new Error("Extraction did not match expected schema");
-  return { data, raw: json };
+  const documents = safeParseExtractions(json);
+  if (documents.length === 0) {
+    throw new Error("Extraction did not match expected schema");
+  }
+  return { documents, raw: json };
 }

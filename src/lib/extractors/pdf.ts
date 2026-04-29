@@ -4,7 +4,7 @@ import {
   FILE_EXTRACTION_USER_PROMPT,
   TEXT_EXTRACTION_USER_PROMPT,
 } from "@/lib/llm/prompts";
-import { safeParseExtraction } from "@/lib/validation/schemas";
+import { safeParseExtractions } from "@/lib/validation/schemas";
 import type { ExtractorInput, ExtractorResult } from "./index";
 
 export async function extractFromPdf(
@@ -24,8 +24,9 @@ export async function extractFromPdf(
       },
     ]);
     const text = result.response.text();
-    const parsed = safeParseExtraction(JSON.parse(text));
-    if (parsed) return { data: parsed, raw: JSON.parse(text) };
+    const json = JSON.parse(text);
+    const documents = safeParseExtractions(json);
+    if (documents.length > 0) return { documents, raw: json };
   } catch (err) {
     console.warn("[pdf] Gemini multimodal extraction failed, falling back", err);
   }
@@ -42,7 +43,9 @@ export async function extractFromPdf(
   const result = await model.generateContent(TEXT_EXTRACTION_USER_PROMPT(rawText));
   const text = result.response.text();
   const json = JSON.parse(text);
-  const data = safeParseExtraction(json);
-  if (!data) throw new Error("Extraction did not match expected schema");
-  return { data, raw: json };
+  const documents = safeParseExtractions(json);
+  if (documents.length === 0) {
+    throw new Error("Extraction did not match expected schema");
+  }
+  return { documents, raw: json };
 }

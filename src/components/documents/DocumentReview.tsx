@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDocument } from "@/hooks/useDocument";
 import { OriginalFileViewer } from "./OriginalFileViewer";
 import { ReviewForm } from "./ReviewForm";
+import { SiblingNav } from "./SiblingNav";
 import { StatusBadge } from "./StatusBadge";
 import { ValidationPanel } from "./ValidationPanel";
 import { formatDate } from "@/lib/utils";
@@ -59,6 +60,8 @@ export function DocumentReview({ documentId }: { documentId: string }) {
           </p>
         </div>
       </div>
+
+      <SiblingNav document={document} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">

@@ -2,7 +2,7 @@ import "server-only";
 import Papa from "papaparse";
 import { getExtractionModel } from "@/lib/llm/gemini";
 import { TEXT_EXTRACTION_USER_PROMPT } from "@/lib/llm/prompts";
-import { safeParseExtraction } from "@/lib/validation/schemas";
+import { safeParseExtractions } from "@/lib/validation/schemas";
 import type { ExtractorInput, ExtractorResult } from "./index";
 
 export async function extractFromCsv(
@@ -10,7 +10,6 @@ export async function extractFromCsv(
 ): Promise<ExtractorResult> {
   const csvText = input.buffer.toString("utf-8");
 
-  // Quick parse with papaparse to get a normalized text representation
   const parsed = Papa.parse<string[]>(csvText.trim(), {
     skipEmptyLines: true,
   });
@@ -30,7 +29,9 @@ export async function extractFromCsv(
   );
   const text = result.response.text();
   const json = JSON.parse(text);
-  const data = safeParseExtraction(json);
-  if (!data) throw new Error("Extraction did not match expected schema");
-  return { data, raw: json };
+  const documents = safeParseExtractions(json);
+  if (documents.length === 0) {
+    throw new Error("Extraction did not match expected schema");
+  }
+  return { documents, raw: json };
 }

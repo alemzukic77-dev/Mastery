@@ -13,7 +13,9 @@ export interface ExtractorInput {
 }
 
 export interface ExtractorResult {
-  data: ExtractedData;
+  /** All documents detected in the input. Length 1 for normal cases, N for multi-doc files. */
+  documents: ExtractedData[];
+  /** Raw LLM output for audit trail. */
   raw: unknown;
 }
 

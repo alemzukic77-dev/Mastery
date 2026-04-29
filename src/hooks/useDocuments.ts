@@ -73,6 +73,11 @@ function normalize(id: string, data: DocumentData): ProcessedDocument {
       fileName: "",
     },
     rawExtraction: data.rawExtraction,
+    documentIndex:
+      typeof data.documentIndex === "number" ? data.documentIndex : undefined,
+    siblingIds: Array.isArray(data.siblingIds)
+      ? (data.siblingIds as string[])
+      : undefined,
     createdAt: toIso(data.createdAt),
     updatedAt: toIso(data.updatedAt),
     validatedAt: data.validatedAt ? toIso(data.validatedAt) : undefined,

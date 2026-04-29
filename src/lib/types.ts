@@ -59,6 +59,10 @@ export interface ProcessedDocument {
   validationIssues: ValidationIssue[];
   originalFile: OriginalFileMeta;
   rawExtraction?: unknown;
+  /** When the original file contained multiple distinct documents, this is the 0-based index. */
+  documentIndex?: number;
+  /** IDs of all Firestore docs extracted from the same original file (including this one). */
+  siblingIds?: string[];
   createdAt: string;
   updatedAt: string;
   validatedAt?: string;
