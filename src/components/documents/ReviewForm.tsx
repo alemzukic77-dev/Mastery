@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,9 +25,9 @@ export function ReviewForm({ document }: Props) {
   const { user } = useAuth();
   const [form, setForm] = useState<ExtractedData>(toFormState(document));
   const [syncedUpdatedAt, setSyncedUpdatedAt] = useState(document.updatedAt);
-  const [busy, setBusy] = useState<"save" | "confirm" | "reject" | "delete" | null>(
-    null,
-  );
+  const [busy, setBusy] = useState<
+    "save" | "confirm" | "reject" | "delete" | "reextract" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   // Sync form state when document refreshes (e.g. after save → Firestore push).
@@ -87,6 +87,31 @@ export function ReviewForm({ document }: Props) {
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reject failed");
+      setBusy(null);
+    }
+  }
+
+  async function onReextract() {
+    if (!user) return;
+    setBusy("reextract");
+    setError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ documentId: document.id }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? `Extraction failed (${res.status})`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Re-extract failed");
+    } finally {
       setBusy(null);
     }
   }
@@ -360,20 +385,35 @@ export function ReviewForm({ document }: Props) {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onDelete}
-          disabled={busy !== null}
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          {busy === "delete" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Delete
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={busy !== null}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            {busy === "delete" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Delete
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onReextract}
+            disabled={busy !== null}
+          >
+            {busy === "reextract" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Re-extract
+          </Button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
